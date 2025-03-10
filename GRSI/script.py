@@ -47,6 +47,8 @@ def get_latest_vulnerabilities():
     
 def update_excel(new_cves):
     new_data = pd.DataFrame(new_cves, columns=["CVE ID", "Data Publicada", "Descrição", "Nível"])
+    # Formata a data para o formato YMD
+    new_data["Data Publicada"] = pd.to_datetime(new_data["Data Publicada"]).dt.date
     
     if os.path.exists(excel_file):
         # Carrega os dados existentes

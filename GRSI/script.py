@@ -3,21 +3,21 @@ import requests
 import json
 import pandas as pd
 import os
+import time
 
 # Gerando a data atual
 now = datetime.now()
 formatted_time = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+print(formatted_time)
 # NVD API URL
-url = f"""https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=10&keywordSearch=macos monterey
-&keywordExactMatch&keywordSearch=windows server 2012&keywordExactMatch&keywordSearch=macos big sur
-&keywordExactMatch&keywordSearch=SQL Server 2012&keywordExactMatch&keywordSearch=acrobat&keywordExactMatch&keywordSearch=microsoft 
-exchange&keywordExactMatch&keywordSearch=wzr-600dhp&keywordExactMatch&keywordSearch=wzr-hp-g300nh&keywordExactMatch&keywordSearch=
-epiphany&keywordExactMatch&pubStartDate=2024-12-01T00:00:00.000&pubEndDate={formatted_time}"""
 excel_file = "gestão de vulnerabilidades.xlsx"
+keywords = ["macOS Monterey", "Acrobat", "macOS Big Sur", "Windows Server 2012", "SQL Server 2012", "Microsoft Exchange", "WZR-600DHP", "WZR-HP-G300NH", "Epiphany"]
 
 # Busca de vulnerabilidades
-def get_latest_vulnerabilities():
-    response = requests.get(url)
+def get_latest_vulnerabilities(keyword):
+    print(f"Buscando vulnerabilidade para: {keyword}...")
+    url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=10&keywordSearch={keyword}&keywordExactMatch&pubStartDate=2025-01-01T00:00:00.000&pubEndDate={formatted_time}"
+    response = requests.get(url, timeout = 30)
     if response.status_code == 200:
         data = response.json()
         new_cves = []
@@ -38,15 +38,15 @@ def get_latest_vulnerabilities():
                         cvss = cve["cve"]["metrics"]["cvssMetricV2"][0]["cvssData"]["baseScore"]
                     except KeyError:
                         pass
-            new_cves.append([cve_id, formatted_date, description, cvss])
-            print(f"CVE ID: {cve_id}\nPublished: {published_date}\nDescription: {description}\nCVSS: {cvss}\n")
+            new_cves.append([cve_id, formatted_date, description, cvss, keyword])
+            print(f"CVE ID: {cve_id}\nPublished: {published_date}\nDescription: {description}\nCVSS: {cvss}\nPrograma: {keyword}\n")
         return new_cves
     else:
         print("Busca falhou em adquirir dados:", response.status_code)
         return[]
     
-def update_excel(new_cves):
-    new_data = pd.DataFrame(new_cves, columns=["CVE ID", "Data Publicada", "Descrição", "Nível"])
+def update_excel(all_cves):
+    new_data = pd.DataFrame(all_cves, columns=["CVE ID", "Data Publicada", "Descrição", "Nível", "Programa"])
     # Formata a data para o formato YMD
     new_data["Data Publicada"] = pd.to_datetime(new_data["Data Publicada"]).dt.date
     
@@ -66,12 +66,15 @@ def update_excel(new_cves):
 
     print(f"Updated Excel file: {excel_file}")
 
-# Roda a função
-latest_cves = get_latest_vulnerabilities()
+all_cves = []
+for keyword in keywords:
+    cves = get_latest_vulnerabilities(keyword)
+    all_cves.extend(cves)
+    time.sleep(5)
 
 
-if latest_cves:
-    update_excel(latest_cves)
+if all_cves:
+    update_excel(all_cves)
 
 # Se não houver novas vulnerabilidades
 else:

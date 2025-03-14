@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import json
 import pandas as pd
@@ -8,7 +8,8 @@ import time
 # Gerando a data atual
 now = datetime.now()
 formatted_time = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-print(formatted_time)
+three_months_ago = now - timedelta(days=65)  # Aproximadamente 3 meses atrás
+formatted_start_date = three_months_ago.strftime("%Y-%m-%dT00:00:00.000Z")
 # NVD API URL
 excel_file = "gestão de vulnerabilidades.xlsx"
 keywords = ["macOS Monterey", "Acrobat", "macOS Big Sur", "Windows Server 2012", "SQL Server 2012", "Microsoft Exchange", "WZR-600DHP", "WZR-HP-G300NH", "Epiphany"]
@@ -16,7 +17,7 @@ keywords = ["macOS Monterey", "Acrobat", "macOS Big Sur", "Windows Server 2012",
 # Busca de vulnerabilidades
 def get_latest_vulnerabilities(keyword):
     print(f"Buscando vulnerabilidade para: {keyword}...")
-    url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=10&keywordSearch={keyword}&keywordExactMatch&pubStartDate=2025-01-01T00:00:00.000&pubEndDate={formatted_time}"
+    url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=10&keywordSearch={keyword}&keywordExactMatch&pubStartDate={formatted_start_date}&pubEndDate={formatted_time}"
     response = requests.get(url, timeout = 30)
     if response.status_code == 200:
         data = response.json()
@@ -66,16 +67,17 @@ def update_excel(all_cves):
 
     print(f"Updated Excel file: {excel_file}")
 
-all_cves = []
-for keyword in keywords:
-    cves = get_latest_vulnerabilities(keyword)
-    all_cves.extend(cves)
-    time.sleep(5)
 
+if __name__ == "__main__":
+    all_cves = []
+    for keyword in keywords:
+        cves = get_latest_vulnerabilities(keyword)
+        all_cves.extend(cves)
+        time.sleep(6)
 
-if all_cves:
-    update_excel(all_cves)
+    if all_cves:
+        update_excel(all_cves)
 
-# Se não houver novas vulnerabilidades
-else:
-    print("0 CVEs novos encontrados")
+    # Se não houver novas vulnerabilidades
+    else:
+        print("0 CVEs novos encontrados")

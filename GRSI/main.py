@@ -8,16 +8,17 @@ import time
 # Gerando a data atual
 now = datetime.now()
 formatted_time = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-three_months_ago = now - timedelta(days=65)  # Aproximadamente 3 meses atrás
+# Gerando a data de inicio de busca, aproximadamente 2 meses atrás
+three_months_ago = now - timedelta(days=65)  
 formatted_start_date = three_months_ago.strftime("%Y-%m-%dT00:00:00.000Z")
-# NVD API URL
 excel_file = "gestão de vulnerabilidades.xlsx"
 keywords = ["macOS Monterey", "Acrobat", "macOS Big Sur", "Windows Server 2012", "SQL Server 2012", "Microsoft Exchange", "WZR-600DHP", "WZR-HP-G300NH", "Epiphany"]
 
 # Busca de vulnerabilidades
 def get_latest_vulnerabilities(keyword):
     print(f"Buscando vulnerabilidade para: {keyword}...")
-    url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=10&keywordSearch={keyword}&keywordExactMatch&pubStartDate={formatted_start_date}&pubEndDate={formatted_time}"
+    # NVD API URL
+    url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=10&keywordSearch={keyword}&keywordExactMatch&pubStartDate={formatted_start_date}&pubEndDate={formatted_time}" 
     response = requests.get(url, timeout = 30)
     if response.status_code == 200:
         data = response.json()
@@ -50,23 +51,22 @@ def update_excel(all_cves):
     new_data = pd.DataFrame(all_cves, columns=["CVE ID", "Data Publicada", "Descrição", "Nível", "Programa"])
     # Formata a data para o formato YMD
     new_data["Data Publicada"] = pd.to_datetime(new_data["Data Publicada"]).dt.date
-    
+
     if os.path.exists(excel_file):
         # Carrega os dados existentes
-        existing_data = pd.read_excel(excel_file)
-        
+        existing_data = pd.read_excel(excel_file, sheet_name="CVEs", index_col=None)
+        existing_data = existing_data.loc[:, ~existing_data.columns.str.contains('^Unnamed')]
+
         # Mescla sem duplicar
         final_data = pd.concat([existing_data, new_data]).drop_duplicates(subset=["CVE ID"], keep="first")
-        
+
         # Abre o arquivo existente em modo de adição
         with pd.ExcelWriter(excel_file, mode='a', if_sheet_exists='replace', engine='openpyxl') as writer:
-            final_data.to_excel(writer, index=False, sheet_name="CVEs")
+            final_data.to_excel(writer, index=False, sheet_name="CVEs")  
     else:
-        # Cria um novo arquivo se ele não existe
         new_data.to_excel(excel_file, index=False, sheet_name="CVEs")
 
-    print(f"Updated Excel file: {excel_file}")
-
+    print(f"Arquivo Excel atualizado: {excel_file}")
 
 if __name__ == "__main__":
     all_cves = []
@@ -78,6 +78,6 @@ if __name__ == "__main__":
     if all_cves:
         update_excel(all_cves)
 
-    # Se não houver novas vulnerabilidades
+    # Se não houver vulnerabilidades
     else:
-        print("0 CVEs novos encontrados")
+        print("0 CVEs encontrados")
